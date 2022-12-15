@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\PostController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -13,10 +13,19 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::get('/', function () {
+//     return view('welcome');
+// });
 
-Auth::routes();
+Route::get('/', [PostController::class, 'index'])->name('post.index');
+Route::get('/trash', [PostController::class, 'trash'])->name('post.trash');
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::post('/create', [PostController::class, 'create']);
+Route::post('/check/change', [PostController::class, 'checkedChange']);
+Route::post('/softdelete', [PostController::class, 'goToTrash']);
+Route::post('/restore', [PostController::class, 'restore']);
+Route::post('/delete', [PostController::class, 'delete']);
+
+// Auth::routes();
+
+// Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

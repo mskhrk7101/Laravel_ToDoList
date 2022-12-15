@@ -1,85 +1,112 @@
 <?php
-
 namespace App\Http\Controllers;
-
 use App\Models\Post;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 class PostController extends Controller
 {
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return \\Illuminate\\Http\\Response
      */
     public function index()
     {
-        //
+        $posts = $this->_getDisplayLists();
+        return view('posts.index',['posts'=> $posts]);
     }
-
     /**
-     * Show the form for creating a new resource.
+     * creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return \\Illuminate\\Http\\Response
      */
-    public function create()
+    public function create(Request $request)
     {
-        //
+        $result = Post::create([
+            'text' => $request->task
+        ]);
+        $post = DB::table('posts')
+        ->selectRaw('id,text,complete_flag,DATE_FORMAT(created_at, "%Y-%m-%d %H:%i") AS create_time')
+        ->where('id', $result->id)->get();
+        return response()->json( ['post' => $post]);
     }
-
     /**
-     * Store a newly created resource in storage.
+     * change the specified resource.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return \\Illuminate\\Http\\Response
      */
-    public function store(Request $request)
+    public function checkedChange(Request $request)
     {
-        //
+        $is_checked = $request->is_checked === 'true' ? 1 : 0;
+        // Log::debug($is_checked);
+        $posts = DB::table('posts')
+            ->where('id',$request->id)
+            ->update(['complete_flag' => $is_checked]);
+        return $is_checked; 
     }
-
     /**
-     * Display the specified resource.
+     * Display a listing of the trash resource.
      *
-     * @param  \App\Models\Post  $post
-     * @return \Illuminate\Http\Response
+     * @return \\Illuminate\\Http\\Response
      */
-    public function show(Post $post)
+    public function trash()
     {
-        //
+        $posts =  $this->_getTrashLists();
+        return view('posts.trash', ['posts' => $posts]);
     }
-
     /**
-     * Show the form for editing the specified resource.
+     * SoftDelete the specified resource from storage.
      *
-     * @param  \App\Models\Post  $post
-     * @return \Illuminate\Http\Response
+     * @param  \\App\\Models\\Post  $post
+     * @return \\Illuminate\\Http\\Response
      */
-    public function edit(Post $post)
+    public function goToTrash(Request $request)
     {
-        //
+        $result = Post::destroy($request->id);
+        return $result;
     }
-
     /**
-     * Update the specified resource in storage.
+     * Back to store the specified resource from storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Post  $post
-     * @return \Illuminate\Http\Response
+     * @param  \\App\\Models\\Post  $post
+     * @return \\Illuminate\\Http\\Response
      */
-    public function update(Request $request, Post $post)
+    public function restore(Request $request)
     {
-        //
+        $result = Post::where('id',$request->id)->withTrashed()->restore();
+        
+        return redirect()->route('post.trash');
     }
-
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Post  $post
-     * @return \Illuminate\Http\Response
+     * @return \\Illuminate\\Http\\Response
      */
-    public function destroy(Post $post)
+    public function delete()
     {
-        //
+        $result = DB::table('posts')->whereNotNull('deleted_at')->delete();
+        $posts = $this->_getTrashLists();
+        return redirect()->route('post.trash', ['post' => $posts]);
+    }
+    // SQL
+    private function _getDisplayLists()
+    {
+        $result = DB::table('posts')
+            ->selectRaw('id,text,complete_flag,DATE_FORMAT(created_at, "%Y-%m-%d %H:%i") AS create_time')
+            ->whereNull('deleted_at')
+            ->orderByRaw('created_at DESC')
+            ->get();
+        return $result;
+    }
+    private function _getTrashLists()
+    {
+        $result = DB::table('posts')
+        ->selectRaw('id,text,complete_flag,DATE_FORMAT(created_at, "%Y-%m-%d %H:%i") AS create_time')
+        ->whereNotNull('deleted_at')
+        ->orderByRaw('created_at DESC')
+        ->get();
+        return $result;
     }
 }
